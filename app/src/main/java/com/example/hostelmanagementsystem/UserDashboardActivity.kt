@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Build
+import android.util.Log
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
@@ -48,6 +49,9 @@ import retrofit2.Response
 import java.util.Locale
 
 class UserDashboardActivity : AppCompatActivity(), PaymentResultWithDataListener {
+    companion object {
+        private const val TAG = "UserDashboardActivity"
+    }
 
     private lateinit var sessionManager: SessionManager
     private lateinit var socket: Socket
@@ -409,8 +413,10 @@ class UserDashboardActivity : AppCompatActivity(), PaymentResultWithDataListener
         try {
             val checkout = Checkout()
             checkout.setKeyID(order.keyId)
+            checkout.setFullScreenDisable(true)
 
             val options = JSONObject().apply {
+                put("key", order.keyId)
                 put("name", "Hostel Management")
                 put("description", order.fee.title)
                 put("order_id", order.orderId)
@@ -429,8 +435,13 @@ class UserDashboardActivity : AppCompatActivity(), PaymentResultWithDataListener
 
             checkout.open(this@UserDashboardActivity, options)
         } catch (error: Exception) {
+            Log.e(TAG, "Unable to open Razorpay Checkout", error)
             restoreFeeButtonState()
-            Toast.makeText(this, "Unable to open payment screen", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                this,
+                error.message ?: "Unable to open payment screen",
+                Toast.LENGTH_LONG
+            ).show()
         }
     }
 
@@ -752,10 +763,11 @@ class UserDashboardActivity : AppCompatActivity(), PaymentResultWithDataListener
     }
 
     override fun onPaymentError(code: Int, response: String?, paymentData: PaymentData?) {
+        Log.e(TAG, "Razorpay payment error code=$code response=$response")
         restoreFeeButtonState()
         Toast.makeText(
             this,
-            response ?: "Payment failed or cancelled",
+            extractRazorpayErrorMessage(response),
             Toast.LENGTH_LONG
         ).show()
     }
@@ -783,6 +795,25 @@ class UserDashboardActivity : AppCompatActivity(), PaymentResultWithDataListener
             }
         } catch (_: Exception) {
             fallback
+        }
+    }
+
+    private fun extractRazorpayErrorMessage(response: String?): String {
+        if (response.isNullOrBlank()) {
+            return "Payment failed or cancelled"
+        }
+
+        return try {
+            val error = JSONObject(response).optJSONObject("error")
+            val description = error?.optString("description").orEmpty()
+
+            if (description.isBlank() || description.equals("undefined", ignoreCase = true)) {
+                "Payment failed or cancelled"
+            } else {
+                description
+            }
+        } catch (_: Exception) {
+            response
         }
     }
 

@@ -1,7 +1,19 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
 }
+
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) {
+        file.inputStream().use { load(it) }
+    }
+}
+
+val backendHost = localProperties.getProperty("backendHost")?.takeIf { it.isNotBlank() } ?: "10.0.2.2"
+val backendPort = localProperties.getProperty("backendPort")?.takeIf { it.isNotBlank() } ?: "5000"
 
 android {
     namespace = "com.example.hostelmanagementsystem"
@@ -21,8 +33,8 @@ android {
 
     buildTypes {
         debug {
-            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:5000/api/\"")
-            buildConfigField("String", "SOCKET_URL", "\"http://10.0.2.2:5000\"")
+            buildConfigField("String", "API_BASE_URL", "\"http://$backendHost:$backendPort/api/\"")
+            buildConfigField("String", "SOCKET_URL", "\"http://$backendHost:$backendPort\"")
             manifestPlaceholders["usesCleartextTraffic"] = "true"
         }
         release {
@@ -46,6 +58,13 @@ android {
     kotlinOptions {
         jvmTarget = "11"
     }
+}
+
+configurations.all {
+    resolutionStrategy.force(
+        "com.razorpay:standard-core:1.7.10",
+        "com.razorpay:core:1.0.10"
+    )
 }
 
 dependencies {

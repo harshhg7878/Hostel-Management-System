@@ -57,13 +57,22 @@ const buildReceipt = (userId, monthLabel) => {
   return `fee_${String(userId).slice(-6)}_${normalizedMonth}_${Date.now()}`.slice(0, 40);
 };
 
+const hasValidRazorpayKeys = (keyId, keySecret) => {
+  return Boolean(
+    keyId &&
+    keySecret &&
+    /^rzp_(test|live)_/.test(keyId) &&
+    keySecret !== "replace-with-razorpay-secret"
+  );
+};
+
 const callRazorpayOrdersApi = (payload) => {
   return new Promise((resolve, reject) => {
     const keyId = process.env.RAZORPAY_KEY_ID;
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
 
-    if (!keyId || !keySecret) {
-      reject(new Error("Razorpay keys are missing in environment configuration"));
+    if (!hasValidRazorpayKeys(keyId, keySecret)) {
+      reject(new Error("Valid Razorpay keys are missing in backend .env"));
       return;
     }
 
@@ -237,7 +246,7 @@ const createPaymentOrder = async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ message: "Unable to create payment order", error: error.message });
+    res.status(502).json({ message: error.message || "Unable to create payment order" });
   }
 };
 
