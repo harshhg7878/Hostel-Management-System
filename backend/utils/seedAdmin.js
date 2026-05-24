@@ -2,7 +2,7 @@ const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 
 const seedAdmin = async () => {
-  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminEmail = (process.env.ADMIN_EMAIL || "").trim().toLowerCase();
   const adminPassword = process.env.ADMIN_PASSWORD;
   const adminName = process.env.ADMIN_NAME || "System Admin";
 
@@ -14,12 +14,6 @@ const seedAdmin = async () => {
   const existingAdmin = await User.findOne({ email: adminEmail });
 
   if (existingAdmin) {
-    return;
-  }
-
-  const hasUsers = await User.exists({});
-
-  if (hasUsers) {
     return;
   }
 
